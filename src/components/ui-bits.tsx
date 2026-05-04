@@ -61,7 +61,7 @@ export function PageHeader({
           <div className="flex items-center gap-3">{actions}</div>
         </div>
         {meta && (
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-2 text-xs text-muted-foreground border-t border-border pt-5">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-5 text-xs text-muted-foreground border-t border-border">
             {meta}
           </div>
         )}
