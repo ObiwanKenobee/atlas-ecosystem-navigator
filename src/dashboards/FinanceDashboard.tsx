@@ -370,8 +370,11 @@ export function FinanceDashboard() {
             </div>
           </div>
         </section>
-
-
+        {/* Projects */}
+        <section>
+          <SectionHeading
+            index="03"
+            title="Active projects"
             description="Each card is a living instrument — funding releases on verified milestones."
             aside={
               <button className="h-8 px-3 rounded-md border border-border bg-surface text-[11px] font-mono flex items-center gap-1.5 hover:bg-accent">
