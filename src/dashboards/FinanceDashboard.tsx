@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -8,7 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 import { PageHeader, MetaItem, StatCard, SectionHeading, Pill } from "@/components/ui-bits";
-import { TrendingUp, MapPin, Filter } from "lucide-react";
+import { TrendingUp, MapPin, Filter, ChevronRight, ArrowRight } from "lucide-react";
 
 const portfolio = [
   { month: "Nov", returns: 4.1, impact: 38 },
@@ -20,13 +21,90 @@ const portfolio = [
   { month: "May", returns: 7.8, impact: 64 },
 ];
 
-const allocation = [
-  { label: "Soil & watershed restoration", pct: 38, accent: "eco" as const, value: "$1.94M" },
-  { label: "Biodiversity corridors", pct: 24, accent: "eco" as const, value: "$1.22M" },
-  { label: "Community livelihoods", pct: 18, accent: "gov" as const, value: "$0.92M" },
-  { label: "Verification & monitoring", pct: 12, accent: "val" as const, value: "$0.61M" },
-  { label: "Treasury reserve", pct: 8, accent: "fin" as const, value: "$0.41M" },
+type Accent = "eco" | "gov" | "val" | "fin";
+type Allocation = {
+  key: string;
+  label: string;
+  pct: number;
+  accent: Accent;
+  value: string;
+  description: string;
+  projects: string[]; // project ids
+  flow: { from: string; to: string; amount: string }[];
+};
+
+const allocation: Allocation[] = [
+  {
+    key: "soil",
+    label: "Soil & watershed restoration",
+    pct: 38,
+    accent: "eco",
+    value: "$1.94M",
+    description: "Terracing, swales and cover-cropping across dryland transects. Disbursements gated on soil moisture and infiltration gains.",
+    projects: ["PRJ-204", "PRJ-142"],
+    flow: [
+      { from: "Treasury", to: "Regional bursar", amount: "$1.94M" },
+      { from: "Regional bursar", to: "Field cooperatives", amount: "$1.62M" },
+      { from: "Field cooperatives", to: "Verified outcomes", amount: "$1.41M" },
+    ],
+  },
+  {
+    key: "biodiversity",
+    label: "Biodiversity corridors",
+    pct: 24,
+    accent: "eco",
+    value: "$1.22M",
+    description: "Connective replanting linking cloud forest, mangrove and montane fragments. Funded against acoustic-DNA species recoveries.",
+    projects: ["PRJ-156", "PRJ-187"],
+    flow: [
+      { from: "Treasury", to: "Bioregion programmes", amount: "$1.22M" },
+      { from: "Bioregion programmes", to: "Steward councils", amount: "$1.04M" },
+      { from: "Steward councils", to: "Verified outcomes", amount: "$0.91M" },
+    ],
+  },
+  {
+    key: "livelihoods",
+    label: "Community livelihoods",
+    pct: 18,
+    accent: "gov",
+    value: "$0.92M",
+    description: "Stewardship stipends, training and tool grants. Tied to enrolment and retention across 38 operator cohorts.",
+    projects: ["PRJ-187", "PRJ-204"],
+    flow: [
+      { from: "Treasury", to: "Community trust", amount: "$0.92M" },
+      { from: "Community trust", to: "Operator stipends", amount: "$0.74M" },
+      { from: "Operator stipends", to: "Verified outcomes", amount: "$0.68M" },
+    ],
+  },
+  {
+    key: "verification",
+    label: "Verification & monitoring",
+    pct: 12,
+    accent: "val",
+    value: "$0.61M",
+    description: "Atlas Nodes, third-party audits and satellite cross-checks. The witness layer beneath every other line.",
+    projects: ["PRJ-142", "PRJ-156"],
+    flow: [
+      { from: "Treasury", to: "Verification ops", amount: "$0.61M" },
+      { from: "Verification ops", to: "Field auditors", amount: "$0.42M" },
+      { from: "Field auditors", to: "Public ledger", amount: "$0.38M" },
+    ],
+  },
+  {
+    key: "reserve",
+    label: "Treasury reserve",
+    pct: 8,
+    accent: "fin",
+    value: "$0.41M",
+    description: "Held against drawdown risk and emergent restoration windows. Released only by council quorum.",
+    projects: [],
+    flow: [
+      { from: "Investor pool", to: "Treasury reserve", amount: "$0.41M" },
+      { from: "Treasury reserve", to: "Held", amount: "$0.41M" },
+    ],
+  },
 ];
+
 
 const projects = [
   {
@@ -78,7 +156,18 @@ const flow = [
   { from: "Verified outcomes", to: "Investor returns", amount: "$0.62M", accent: "gov" as const },
 ];
 
+const accentBar: Record<Accent, string> = {
+  eco: "bg-[var(--eco)]",
+  gov: "bg-[var(--gov)]",
+  val: "bg-[var(--val)]",
+  fin: "bg-[var(--fin)]",
+};
+
 export function FinanceDashboard() {
+  const [selectedKey, setSelectedKey] = useState<string>(allocation[0].key);
+  const selected = allocation.find((a) => a.key === selectedKey) ?? allocation[0];
+  const selectedProjects = projects.filter((p) => selected.projects.includes(p.id));
+
   return (
     <div>
       <PageHeader
@@ -161,38 +250,130 @@ export function FinanceDashboard() {
               </div>
               <span className="font-mono text-[11px] text-muted-foreground">$5.10M</span>
             </div>
-            <ul className="divide-y divide-border">
-              {allocation.map((a) => (
-                <li key={a.label} className="px-5 py-3.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-foreground">{a.label}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{a.value}</span>
-                  </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={
-                        a.accent === "eco" ? "h-full bg-[var(--eco)]" :
-                        a.accent === "gov" ? "h-full bg-[var(--gov)]" :
-                        a.accent === "val" ? "h-full bg-[var(--val)]" :
-                        "h-full bg-[var(--fin)]"
-                      }
-                      style={{ width: `${a.pct}%` }}
-                    />
-                  </div>
-                  <div className="mt-1 flex justify-between text-[11px] font-mono text-muted-foreground">
-                    <Pill accent={a.accent}>{a.accent}</Pill>
-                    <span>{a.pct}%</span>
-                  </div>
-                </li>
-              ))}
+            <ul className="divide-y divide-border" role="listbox" aria-label="Resource allocation — choose a line to drill in">
+              {allocation.map((a) => {
+                const active = a.key === selectedKey;
+                return (
+                  <li key={a.key}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => setSelectedKey(a.key)}
+                      className={[
+                        "w-full text-left px-5 py-3.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                        active ? "bg-surface" : "hover:bg-surface/60",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-center justify-between text-sm gap-3">
+                        <span className="flex items-center gap-2 min-w-0">
+                          {active && <ChevronRight className="h-3.5 w-3.5 text-[var(--fin)] shrink-0" />}
+                          <span className="truncate text-foreground">{a.label}</span>
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground shrink-0">{a.value}</span>
+                      </div>
+                      <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full ${accentBar[a.accent]} transition-all duration-500`}
+                          style={{ width: `${active ? a.pct : a.pct * 0.85}%`, opacity: active ? 1 : 0.7 }}
+                        />
+                      </div>
+                      <div className="mt-1 flex justify-between text-[11px] font-mono text-muted-foreground">
+                        <Pill accent={a.accent}>{a.accent}</Pill>
+                        <span>{a.pct}%</span>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </section>
 
+        {/* Drilldown */}
+        <section aria-live="polite">
+          <SectionHeading
+            index="02"
+            title={`Drilldown · ${selected.label}`}
+            description={selected.description}
+            aside={
+              <>
+                <Pill accent={selected.accent}>{selected.pct}% of treasury</Pill>
+                <Pill accent="fin">{selected.value}</Pill>
+              </>
+            }
+          />
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+            <div className="panel xl:col-span-2">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <div>
+                  <div className="eyebrow">Linked projects</div>
+                  <h3 className="font-display text-lg mt-0.5">{selectedProjects.length} funded</h3>
+                </div>
+                <Pill accent={selected.accent}>{selected.accent}</Pill>
+              </div>
+              {selectedProjects.length === 0 ? (
+                <div className="px-5 py-8 text-sm text-muted-foreground italic">
+                  Held in reserve — no active projects bonded to this line.
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {selectedProjects.map((p) => (
+                    <li key={p.id} className="px-5 py-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[11px] text-muted-foreground">{p.id}</span>
+                        <Pill accent={p.accent}>{p.region}</Pill>
+                      </div>
+                      <div className="mt-1.5 text-sm font-display">{p.name}</div>
+                      <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-foreground transition-all duration-500" style={{ width: `${p.funded}%` }} />
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                        <span>{p.funded}% of {p.target}</span>
+                        <span>ROI {p.roi}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="panel xl:col-span-3 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <div className="eyebrow">Capital flow · this line</div>
+                  <h3 className="font-display text-lg mt-0.5">From treasury to verified outcome</h3>
+                </div>
+                <Pill accent="fin">live</Pill>
+              </div>
+              <div className="flex flex-col md:flex-row md:items-stretch gap-3 md:gap-0">
+                {selected.flow.map((f, i) => (
+                  <div key={i} className="flex items-stretch flex-1 min-w-0">
+                    <div className="panel-flat p-4 flex-1 min-w-0">
+                      <div className="eyebrow">Stage {i + 1}</div>
+                      <div className="mt-2 text-sm truncate">{f.from}</div>
+                      <div className="mt-1 font-mono text-[11px] text-muted-foreground truncate">→ {f.to}</div>
+                      <div className="mt-3 num text-lg">{f.amount}</div>
+                    </div>
+                    {i < selected.flow.length - 1 && (
+                      <div className="hidden md:flex items-center px-2 text-muted-foreground" aria-hidden>
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                <span>Bonded to measurement evidence</span>
+                <span>Audit hash · 0x{selected.key.padEnd(8, "0").slice(0, 8)}…a4e1</span>
+              </div>
+            </div>
+          </div>
+        </section>
         {/* Projects */}
         <section>
           <SectionHeading
-            index="02"
+            index="03"
             title="Active projects"
             description="Each card is a living instrument — funding releases on verified milestones."
             aside={
@@ -239,9 +420,9 @@ export function FinanceDashboard() {
         {/* Flow */}
         <section>
           <SectionHeading
-            index="03"
-            title="Capital flow"
-            description="From investors to outcomes — every link is auditable."
+            index="04"
+            title="Portfolio capital flow"
+            description="The aggregate view across every line — investors to outcomes."
           />
           <div className="panel p-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">

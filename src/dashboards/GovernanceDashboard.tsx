@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { PageHeader, MetaItem, StatCard, SectionHeading, Pill } from "@/components/ui-bits";
-import { Check, X, MessageSquare, Users, Vote as VoteIcon, AlertTriangle } from "lucide-react";
+import { Check, X, MessageSquare, Users, Vote as VoteIcon, AlertTriangle, MinusCircle } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,6 +10,8 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+
+type VoteChoice = "approve" | "reject" | "abstain";
 
 const proposals = [
   {
@@ -68,6 +71,39 @@ const ledger = [
 ];
 
 export function GovernanceDashboard() {
+  const [votes, setVotes] = useState<Record<string, { approve: number; reject: number; abstain: number; mine: VoteChoice | null; total: number }>>(
+    () =>
+      Object.fromEntries(
+        proposals.map((p) => [p.id, { approve: p.approve, reject: p.reject, abstain: p.abstain, mine: null, total: p.approve + p.reject + p.abstain }])
+      )
+  );
+
+  function castVote(id: string, choice: VoteChoice) {
+    setVotes((prev) => {
+      const cur = prev[id];
+      if (cur.mine === choice) return prev;
+      // optimistic: add 1 to total, recompute percentages with absolute counts then re-normalise
+      const counts = {
+        approve: Math.round((cur.approve / 100) * cur.total),
+        reject: Math.round((cur.reject / 100) * cur.total),
+        abstain: Math.round((cur.abstain / 100) * cur.total),
+      };
+      if (cur.mine) counts[cur.mine] = Math.max(0, counts[cur.mine] - 1);
+      counts[choice] += 1;
+      const total = counts.approve + counts.reject + counts.abstain;
+      return {
+        ...prev,
+        [id]: {
+          mine: choice,
+          total,
+          approve: Math.round((counts.approve / total) * 100),
+          reject: Math.round((counts.reject / total) * 100),
+          abstain: 100 - Math.round((counts.approve / total) * 100) - Math.round((counts.reject / total) * 100),
+        },
+      };
+    });
+  }
+
   return (
     <div>
       <PageHeader
@@ -103,9 +139,11 @@ export function GovernanceDashboard() {
           />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {proposals.map((p) => {
-              const total = p.approve + p.reject + p.abstain;
+              const v = votes[p.id];
+              const mine = v.mine;
+              const voted = mine !== null;
               return (
-                <article key={p.id} className="panel p-5 flex flex-col gap-4">
+                <article key={p.id} className="panel p-5 flex flex-col gap-4" aria-label={`Proposal ${p.id}`}>
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[11px] text-muted-foreground">{p.id}</span>
                     <Pill accent={p.accent}>{p.region}</Pill>
@@ -115,29 +153,72 @@ export function GovernanceDashboard() {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-mono">
-                      <span className="text-muted-foreground">Voting · {total}% reported</span>
+                      <span className="text-muted-foreground">Voting · {v.total.toLocaleString()} cast</span>
                       <span>closes in {p.timeLeft}</span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
-                      <div className="bg-[var(--eco)]" style={{ width: `${p.approve}%` }} />
-                      <div className="bg-destructive/70" style={{ width: `${p.reject}%` }} />
-                      <div className="bg-[var(--border-strong)]" style={{ width: `${p.abstain}%` }} />
+                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex" role="progressbar" aria-valuenow={v.approve} aria-valuemin={0} aria-valuemax={100} aria-label={`${v.approve}% approve, ${v.reject}% reject, ${v.abstain}% abstain`}>
+                      <div className="bg-[var(--eco)] transition-all duration-500" style={{ width: `${v.approve}%` }} />
+                      <div className="bg-destructive/70 transition-all duration-500" style={{ width: `${v.reject}%` }} />
+                      <div className="bg-[var(--border-strong)] transition-all duration-500" style={{ width: `${v.abstain}%` }} />
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>✓ {p.approve}%</span>
-                      <span>✕ {p.reject}%</span>
-                      <span>~ {p.abstain}%</span>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono tabular-nums">
+                      <span className={mine === "approve" ? "text-[var(--eco)]" : ""}>✓ {v.approve}%</span>
+                      <span className={mine === "reject" ? "text-destructive" : ""}>✕ {v.reject}%</span>
+                      <span className={mine === "abstain" ? "text-foreground" : ""}>~ {v.abstain}%</span>
                     </div>
                   </div>
 
+                  {voted && (
+                    <div className="text-[11px] font-mono text-[var(--eco)] inline-flex items-center gap-1.5 -mt-1">
+                      <Check className="h-3 w-3" /> Your vote recorded · {mine}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2 pt-1">
-                    <button className="flex-1 h-9 rounded-md bg-foreground text-background text-xs flex items-center justify-center gap-1.5 hover:opacity-90 transition">
-                      <Check className="h-3.5 w-3.5" /> Approve
+                    <button
+                      onClick={() => castVote(p.id, "approve")}
+                      aria-pressed={mine === "approve"}
+                      aria-label={`Approve proposal ${p.id}`}
+                      className={[
+                        "flex-1 h-9 rounded-md text-xs flex items-center justify-center gap-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        mine === "approve"
+                          ? "bg-[var(--eco)] text-background"
+                          : "bg-foreground text-background hover:opacity-90",
+                      ].join(" ")}
+                    >
+                      <Check className="h-3.5 w-3.5" /> {mine === "approve" ? "Approved" : "Approve"}
                     </button>
-                    <button className="flex-1 h-9 rounded-md border border-border bg-surface text-xs flex items-center justify-center gap-1.5 hover:bg-accent transition">
-                      <X className="h-3.5 w-3.5" /> Reject
+                    <button
+                      onClick={() => castVote(p.id, "reject")}
+                      aria-pressed={mine === "reject"}
+                      aria-label={`Reject proposal ${p.id}`}
+                      className={[
+                        "flex-1 h-9 rounded-md border text-xs flex items-center justify-center gap-1.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        mine === "reject"
+                          ? "border-destructive bg-destructive/10 text-destructive"
+                          : "border-border bg-surface hover:bg-accent",
+                      ].join(" ")}
+                    >
+                      <X className="h-3.5 w-3.5" /> {mine === "reject" ? "Rejected" : "Reject"}
                     </button>
-                    <button className="h-9 w-9 rounded-md border border-border bg-surface flex items-center justify-center hover:bg-accent transition">
+                    <button
+                      onClick={() => castVote(p.id, "abstain")}
+                      aria-pressed={mine === "abstain"}
+                      aria-label={`Abstain on proposal ${p.id}`}
+                      className={[
+                        "h-9 w-9 rounded-md border flex items-center justify-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        mine === "abstain"
+                          ? "border-border-strong bg-muted"
+                          : "border-border bg-surface hover:bg-accent",
+                      ].join(" ")}
+                      title="Abstain"
+                    >
+                      <MinusCircle className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      aria-label={`Discuss proposal ${p.id}`}
+                      className="h-9 w-9 rounded-md border border-border bg-surface flex items-center justify-center hover:bg-accent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
                       <MessageSquare className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -145,6 +226,7 @@ export function GovernanceDashboard() {
               );
             })}
           </div>
+
         </section>
 
         {/* Council analytics + ledger */}
