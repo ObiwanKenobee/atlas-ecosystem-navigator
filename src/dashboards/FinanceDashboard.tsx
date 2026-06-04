@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -8,7 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 import { PageHeader, MetaItem, StatCard, SectionHeading, Pill } from "@/components/ui-bits";
-import { TrendingUp, MapPin, Filter } from "lucide-react";
+import { TrendingUp, MapPin, Filter, ChevronRight, ArrowRight } from "lucide-react";
 
 const portfolio = [
   { month: "Nov", returns: 4.1, impact: 38 },
