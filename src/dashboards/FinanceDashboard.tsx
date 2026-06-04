@@ -420,9 +420,9 @@ export function FinanceDashboard() {
         {/* Flow */}
         <section>
           <SectionHeading
-            index="03"
-            title="Capital flow"
-            description="From investors to outcomes — every link is auditable."
+            index="04"
+            title="Portfolio capital flow"
+            description="The aggregate view across every line — investors to outcomes."
           />
           <div className="panel p-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
