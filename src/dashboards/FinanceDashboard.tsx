@@ -250,39 +250,128 @@ export function FinanceDashboard() {
               </div>
               <span className="font-mono text-[11px] text-muted-foreground">$5.10M</span>
             </div>
-            <ul className="divide-y divide-border">
-              {allocation.map((a) => (
-                <li key={a.label} className="px-5 py-3.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-foreground">{a.label}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{a.value}</span>
-                  </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={
-                        a.accent === "eco" ? "h-full bg-[var(--eco)]" :
-                        a.accent === "gov" ? "h-full bg-[var(--gov)]" :
-                        a.accent === "val" ? "h-full bg-[var(--val)]" :
-                        "h-full bg-[var(--fin)]"
-                      }
-                      style={{ width: `${a.pct}%` }}
-                    />
-                  </div>
-                  <div className="mt-1 flex justify-between text-[11px] font-mono text-muted-foreground">
-                    <Pill accent={a.accent}>{a.accent}</Pill>
-                    <span>{a.pct}%</span>
-                  </div>
-                </li>
-              ))}
+            <ul className="divide-y divide-border" role="listbox" aria-label="Resource allocation — choose a line to drill in">
+              {allocation.map((a) => {
+                const active = a.key === selectedKey;
+                return (
+                  <li key={a.key}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => setSelectedKey(a.key)}
+                      className={[
+                        "w-full text-left px-5 py-3.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                        active ? "bg-surface" : "hover:bg-surface/60",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-center justify-between text-sm gap-3">
+                        <span className="flex items-center gap-2 min-w-0">
+                          {active && <ChevronRight className="h-3.5 w-3.5 text-[var(--fin)] shrink-0" />}
+                          <span className="truncate text-foreground">{a.label}</span>
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground shrink-0">{a.value}</span>
+                      </div>
+                      <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full ${accentBar[a.accent]} transition-all duration-500`}
+                          style={{ width: `${active ? a.pct : a.pct * 0.85}%`, opacity: active ? 1 : 0.7 }}
+                        />
+                      </div>
+                      <div className="mt-1 flex justify-between text-[11px] font-mono text-muted-foreground">
+                        <Pill accent={a.accent}>{a.accent}</Pill>
+                        <span>{a.pct}%</span>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </section>
 
-        {/* Projects */}
-        <section>
+        {/* Drilldown */}
+        <section aria-live="polite">
           <SectionHeading
             index="02"
-            title="Active projects"
+            title={`Drilldown · ${selected.label}`}
+            description={selected.description}
+            aside={
+              <>
+                <Pill accent={selected.accent}>{selected.pct}% of treasury</Pill>
+                <Pill accent="fin">{selected.value}</Pill>
+              </>
+            }
+          />
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+            <div className="panel xl:col-span-2">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <div>
+                  <div className="eyebrow">Linked projects</div>
+                  <h3 className="font-display text-lg mt-0.5">{selectedProjects.length} funded</h3>
+                </div>
+                <Pill accent={selected.accent}>{selected.accent}</Pill>
+              </div>
+              {selectedProjects.length === 0 ? (
+                <div className="px-5 py-8 text-sm text-muted-foreground italic">
+                  Held in reserve — no active projects bonded to this line.
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {selectedProjects.map((p) => (
+                    <li key={p.id} className="px-5 py-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[11px] text-muted-foreground">{p.id}</span>
+                        <Pill accent={p.accent}>{p.region}</Pill>
+                      </div>
+                      <div className="mt-1.5 text-sm font-display">{p.name}</div>
+                      <div className="mt-3 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-foreground transition-all duration-500" style={{ width: `${p.funded}%` }} />
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                        <span>{p.funded}% of {p.target}</span>
+                        <span>ROI {p.roi}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="panel xl:col-span-3 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <div className="eyebrow">Capital flow · this line</div>
+                  <h3 className="font-display text-lg mt-0.5">From treasury to verified outcome</h3>
+                </div>
+                <Pill accent="fin">live</Pill>
+              </div>
+              <div className="flex flex-col md:flex-row md:items-stretch gap-3 md:gap-0">
+                {selected.flow.map((f, i) => (
+                  <div key={i} className="flex items-stretch flex-1 min-w-0">
+                    <div className="panel-flat p-4 flex-1 min-w-0">
+                      <div className="eyebrow">Stage {i + 1}</div>
+                      <div className="mt-2 text-sm truncate">{f.from}</div>
+                      <div className="mt-1 font-mono text-[11px] text-muted-foreground truncate">→ {f.to}</div>
+                      <div className="mt-3 num text-lg">{f.amount}</div>
+                    </div>
+                    {i < selected.flow.length - 1 && (
+                      <div className="hidden md:flex items-center px-2 text-muted-foreground" aria-hidden>
+                        <ArrowRight className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                <span>Bonded to measurement evidence</span>
+                <span>Audit hash · 0x{selected.key.padEnd(8, "0").slice(0, 8)}…a4e1</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
             description="Each card is a living instrument — funding releases on verified milestones."
             aside={
               <button className="h-8 px-3 rounded-md border border-border bg-surface text-[11px] font-mono flex items-center gap-1.5 hover:bg-accent">
