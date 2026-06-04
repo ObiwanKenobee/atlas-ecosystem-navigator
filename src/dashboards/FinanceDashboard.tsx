@@ -156,7 +156,18 @@ const flow = [
   { from: "Verified outcomes", to: "Investor returns", amount: "$0.62M", accent: "gov" as const },
 ];
 
+const accentBar: Record<Accent, string> = {
+  eco: "bg-[var(--eco)]",
+  gov: "bg-[var(--gov)]",
+  val: "bg-[var(--val)]",
+  fin: "bg-[var(--fin)]",
+};
+
 export function FinanceDashboard() {
+  const [selectedKey, setSelectedKey] = useState<string>(allocation[0].key);
+  const selected = allocation.find((a) => a.key === selectedKey) ?? allocation[0];
+  const selectedProjects = projects.filter((p) => selected.projects.includes(p.id));
+
   return (
     <div>
       <PageHeader
