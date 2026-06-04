@@ -21,13 +21,90 @@ const portfolio = [
   { month: "May", returns: 7.8, impact: 64 },
 ];
 
-const allocation = [
-  { label: "Soil & watershed restoration", pct: 38, accent: "eco" as const, value: "$1.94M" },
-  { label: "Biodiversity corridors", pct: 24, accent: "eco" as const, value: "$1.22M" },
-  { label: "Community livelihoods", pct: 18, accent: "gov" as const, value: "$0.92M" },
-  { label: "Verification & monitoring", pct: 12, accent: "val" as const, value: "$0.61M" },
-  { label: "Treasury reserve", pct: 8, accent: "fin" as const, value: "$0.41M" },
+type Accent = "eco" | "gov" | "val" | "fin";
+type Allocation = {
+  key: string;
+  label: string;
+  pct: number;
+  accent: Accent;
+  value: string;
+  description: string;
+  projects: string[]; // project ids
+  flow: { from: string; to: string; amount: string }[];
+};
+
+const allocation: Allocation[] = [
+  {
+    key: "soil",
+    label: "Soil & watershed restoration",
+    pct: 38,
+    accent: "eco",
+    value: "$1.94M",
+    description: "Terracing, swales and cover-cropping across dryland transects. Disbursements gated on soil moisture and infiltration gains.",
+    projects: ["PRJ-204", "PRJ-142"],
+    flow: [
+      { from: "Treasury", to: "Regional bursar", amount: "$1.94M" },
+      { from: "Regional bursar", to: "Field cooperatives", amount: "$1.62M" },
+      { from: "Field cooperatives", to: "Verified outcomes", amount: "$1.41M" },
+    ],
+  },
+  {
+    key: "biodiversity",
+    label: "Biodiversity corridors",
+    pct: 24,
+    accent: "eco",
+    value: "$1.22M",
+    description: "Connective replanting linking cloud forest, mangrove and montane fragments. Funded against acoustic-DNA species recoveries.",
+    projects: ["PRJ-156", "PRJ-187"],
+    flow: [
+      { from: "Treasury", to: "Bioregion programmes", amount: "$1.22M" },
+      { from: "Bioregion programmes", to: "Steward councils", amount: "$1.04M" },
+      { from: "Steward councils", to: "Verified outcomes", amount: "$0.91M" },
+    ],
+  },
+  {
+    key: "livelihoods",
+    label: "Community livelihoods",
+    pct: 18,
+    accent: "gov",
+    value: "$0.92M",
+    description: "Stewardship stipends, training and tool grants. Tied to enrolment and retention across 38 operator cohorts.",
+    projects: ["PRJ-187", "PRJ-204"],
+    flow: [
+      { from: "Treasury", to: "Community trust", amount: "$0.92M" },
+      { from: "Community trust", to: "Operator stipends", amount: "$0.74M" },
+      { from: "Operator stipends", to: "Verified outcomes", amount: "$0.68M" },
+    ],
+  },
+  {
+    key: "verification",
+    label: "Verification & monitoring",
+    pct: 12,
+    accent: "val",
+    value: "$0.61M",
+    description: "Atlas Nodes, third-party audits and satellite cross-checks. The witness layer beneath every other line.",
+    projects: ["PRJ-142", "PRJ-156"],
+    flow: [
+      { from: "Treasury", to: "Verification ops", amount: "$0.61M" },
+      { from: "Verification ops", to: "Field auditors", amount: "$0.42M" },
+      { from: "Field auditors", to: "Public ledger", amount: "$0.38M" },
+    ],
+  },
+  {
+    key: "reserve",
+    label: "Treasury reserve",
+    pct: 8,
+    accent: "fin",
+    value: "$0.41M",
+    description: "Held against drawdown risk and emergent restoration windows. Released only by council quorum.",
+    projects: [],
+    flow: [
+      { from: "Investor pool", to: "Treasury reserve", amount: "$0.41M" },
+      { from: "Treasury reserve", to: "Held", amount: "$0.41M" },
+    ],
+  },
 ];
+
 
 const projects = [
   {
