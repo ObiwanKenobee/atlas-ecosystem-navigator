@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -11,7 +12,7 @@ import {
   Line,
 } from "recharts";
 import { PageHeader, MetaItem, StatCard, SectionHeading, Pill } from "@/components/ui-bits";
-import { Layers, Satellite, Leaf, Calendar, Download } from "lucide-react";
+import { Layers, Satellite, Leaf, Calendar, Download, X, MapPin, Droplets, Trees, Wind } from "lucide-react";
 
 const trends = [
   { month: "Nov", carbon: 320, biodiversity: 41, water: 58 },
@@ -33,7 +34,6 @@ const restoration = [
   { month: "May", value: 3420 },
 ];
 
-// 14×8 normalized intensity grid for a parchment heatmap
 const grid = Array.from({ length: 8 }, (_, y) =>
   Array.from({ length: 14 }, (_, x) => {
     const cx = 7, cy = 4;
@@ -43,15 +43,36 @@ const grid = Array.from({ length: 8 }, (_, y) =>
   })
 );
 
-const sites = [
-  { id: "AS-204", name: "Kérou Watershed", status: "verified", lastSurvey: "2d ago", accent: "eco" as const },
-  { id: "AS-187", name: "Lower Mahaweli Delta", status: "in review", lastSurvey: "5d ago", accent: "gov" as const },
-  { id: "AS-156", name: "Cordillera Cloud Forest", status: "verified", lastSurvey: "1w ago", accent: "eco" as const },
-  { id: "AS-142", name: "Atacama Fog Catchments", status: "pending", lastSurvey: "11d ago", accent: "val" as const },
-  { id: "AS-118", name: "Sundarbans Mangrove Belt", status: "verified", lastSurvey: "2w ago", accent: "eco" as const },
+type SiteDetail = {
+  id: string;
+  name: string;
+  status: "verified" | "in review" | "pending";
+  lastSurvey: string;
+  accent: "eco" | "gov" | "val";
+  region: string;
+  hectares: number;
+  carbon: number;
+  biodiversity: number;
+  water: number;
+  steward: string;
+  notes: string;
+  x?: number;
+  y?: number;
+};
+
+const sites: SiteDetail[] = [
+  { id: "AS-204", name: "Kérou Watershed", status: "verified", lastSurvey: "2d ago", accent: "eco", region: "West Africa · Sahel", hectares: 1820, carbon: 412, biodiversity: 67, water: 0.81, steward: "Aïcha Diallo", notes: "Soil moisture index up 18% since terracing began in March. Three downstream villages now reporting reliable dry-season flow.", x: 280, y: 160 },
+  { id: "AS-187", name: "Lower Mahaweli Delta", status: "in review", lastSurvey: "5d ago", accent: "gov", region: "South Asia · Sri Lanka", hectares: 640, carbon: 188, biodiversity: 58, water: 0.74, steward: "Ruwan Senanayake", notes: "Mangrove regrowth stable. Awaiting third-party verification on salinity buffering claims.", x: 150, y: 110 },
+  { id: "AS-156", name: "Cordillera Cloud Forest", status: "verified", lastSurvey: "1w ago", accent: "eco", region: "Andes · Ecuador", hectares: 2100, carbon: 524, biodiversity: 82, water: 0.88, steward: "Maritza Quishpe", notes: "Acoustic-DNA biodiversity sweep returned 312 unique species, including two previously unrecorded amphibians.", x: 430, y: 200 },
+  { id: "AS-142", name: "Atacama Fog Catchments", status: "pending", accent: "val", lastSurvey: "11d ago", region: "South America · Chile", hectares: 210, carbon: 24, biodiversity: 31, water: 0.62, steward: "Tomás Aguilar", notes: "Mesh installation 60% complete. Yield projections under review with hydrology council." },
+  { id: "AS-118", name: "Sundarbans Mangrove Belt", status: "verified", lastSurvey: "2w ago", accent: "eco", region: "South Asia · Bangladesh", hectares: 3400, carbon: 980, biodiversity: 74, water: 0.85, steward: "Rashida Begum", notes: "Storm-surge attenuation measured at 41% reduction in adjacent settlements during April monsoon." },
 ];
 
+const pinSites = sites.filter((s) => s.x != null);
+
 export function BioregionDashboard() {
+  const [open, setOpen] = useState<SiteDetail | null>(null);
+
   return (
     <div>
       <PageHeader
@@ -80,7 +101,6 @@ export function BioregionDashboard() {
       />
 
       <div className="px-6 lg:px-10 py-8 space-y-10">
-        {/* KPIs */}
         <section>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Hectares restored" value="3,420" unit="ha" delta={14.8} accent="eco" footnote="vs. prior period" />
@@ -90,7 +110,6 @@ export function BioregionDashboard() {
           </div>
         </section>
 
-        {/* Map + sidebar */}
         <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <div className="xl:col-span-2 panel overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -108,49 +127,38 @@ export function BioregionDashboard() {
               </div>
             </div>
             <div className="relative grid-paper p-6">
-              <svg viewBox="0 0 560 320" className="w-full h-auto">
-                {/* faint coastline */}
-                <path
-                  d="M20 240 C 80 220, 160 260, 220 230 S 340 200, 420 230 S 520 280, 560 240"
-                  stroke="currentColor"
-                  className="text-muted-foreground"
-                  strokeOpacity="0.25"
-                  fill="none"
-                  strokeWidth="1"
-                />
-                <path
-                  d="M40 80 C 120 100, 180 60, 260 90 S 380 130, 460 90 S 540 60, 560 80"
-                  stroke="currentColor"
-                  className="text-muted-foreground"
-                  strokeOpacity="0.18"
-                  fill="none"
-                  strokeWidth="1"
-                />
+              <svg viewBox="0 0 560 320" className="w-full h-auto" role="img" aria-label="Bioregion restoration heatmap. Tap a pin to inspect a site.">
+                <path d="M20 240 C 80 220, 160 260, 220 230 S 340 200, 420 230 S 520 280, 560 240" stroke="currentColor" className="text-muted-foreground" strokeOpacity="0.25" fill="none" strokeWidth="1" />
+                <path d="M40 80 C 120 100, 180 60, 260 90 S 380 130, 460 90 S 540 60, 560 80" stroke="currentColor" className="text-muted-foreground" strokeOpacity="0.18" fill="none" strokeWidth="1" />
                 {grid.flatMap((row, y) =>
                   row.map((v, x) => (
-                    <circle
-                      key={`${x}-${y}`}
-                      cx={20 + x * 38}
-                      cy={20 + y * 38}
-                      r={4 + v * 14}
-                      fill="var(--eco)"
-                      opacity={0.08 + v * 0.55}
-                    />
+                    <circle key={`${x}-${y}`} cx={20 + x * 38} cy={20 + y * 38} r={4 + v * 14} fill="var(--eco)" opacity={0.08 + v * 0.55} />
                   ))
                 )}
-                {/* labelled pins */}
-                {[
-                  { x: 280, y: 160, label: "AS-204" },
-                  { x: 150, y: 110, label: "AS-187" },
-                  { x: 430, y: 200, label: "AS-156" },
-                ].map((p) => (
-                  <g key={p.label}>
-                    <circle cx={p.x} cy={p.y} r="5" fill="var(--background)" stroke="var(--foreground)" strokeWidth="1.5" />
-                    <text x={p.x + 10} y={p.y + 4} className="font-mono" fontSize="10" fill="currentColor">
-                      {p.label}
-                    </text>
-                  </g>
-                ))}
+                {pinSites.map((p) => {
+                  const active = open?.id === p.id;
+                  return (
+                    <g
+                      key={p.id}
+                      onClick={() => setOpen(p)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Open details for ${p.name} (${p.id})`}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setOpen(p);
+                        }
+                      }}
+                      className="cursor-pointer focus:outline-none focus-visible:[&>circle]:stroke-[var(--eco)]"
+                    >
+                      <circle cx={p.x} cy={p.y} r="14" fill="transparent" />
+                      <circle cx={p.x} cy={p.y} r={active ? 8 : 5} fill="var(--background)" stroke={active ? "var(--eco)" : "var(--foreground)"} strokeWidth={active ? 2 : 1.5} />
+                      <circle cx={p.x} cy={p.y} r={active ? 3 : 2} fill={active ? "var(--eco)" : "var(--foreground)"} />
+                      <text x={(p.x ?? 0) + 12} y={(p.y ?? 0) + 4} className="font-mono" fontSize="10" fill="currentColor">{p.id}</text>
+                    </g>
+                  );
+                })}
               </svg>
               <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
                 <span>14°N — 18°N</span>
@@ -174,27 +182,29 @@ export function BioregionDashboard() {
             </div>
             <ul className="divide-y divide-border">
               {sites.map((s) => (
-                <li key={s.id} className="px-5 py-3.5 flex items-center gap-3 hover:bg-surface transition cursor-pointer">
-                  <div className="h-8 w-8 rounded-md bg-[var(--eco-soft)] text-[var(--eco)] flex items-center justify-center">
-                    <Leaf className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] text-muted-foreground">{s.id}</span>
-                      <span className="text-sm truncate">{s.name}</span>
+                <li key={s.id}>
+                  <button
+                    onClick={() => setOpen(s)}
+                    className="w-full text-left px-5 py-3.5 flex items-center gap-3 hover:bg-surface transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  >
+                    <div className="h-8 w-8 rounded-md bg-[var(--eco-soft)] text-[var(--eco)] flex items-center justify-center">
+                      <Leaf className="h-3.5 w-3.5" />
                     </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Last survey · {s.lastSurvey}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] text-muted-foreground">{s.id}</span>
+                        <span className="text-sm truncate">{s.name}</span>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">Last survey · {s.lastSurvey}</div>
                     </div>
-                  </div>
-                  <Pill accent={s.accent}>{s.status}</Pill>
+                    <Pill accent={s.accent}>{s.status}</Pill>
+                  </button>
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-        {/* Trends */}
         <section>
           <SectionHeading
             index="02"
@@ -213,30 +223,14 @@ export function BioregionDashboard() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="gC" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--val)" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="var(--val)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--eco)" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="var(--eco)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gW" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--gov)" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="var(--gov)" stopOpacity={0} />
-                    </linearGradient>
+                    <linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--val)" stopOpacity={0.4} /><stop offset="100%" stopColor="var(--val)" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="gB" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--eco)" stopOpacity={0.35} /><stop offset="100%" stopColor="var(--eco)" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="gW" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--gov)" stopOpacity={0.3} /><stop offset="100%" stopColor="var(--gov)" stopOpacity={0} /></linearGradient>
                   </defs>
                   <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
                   <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--surface-elevated)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
+                  <Tooltip contentStyle={{ background: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} iconType="plainline" />
                   <Area type="monotone" dataKey="carbon" stroke="var(--val)" fill="url(#gC)" strokeWidth={2} />
                   <Area type="monotone" dataKey="biodiversity" stroke="var(--eco)" fill="url(#gB)" strokeWidth={2} />
@@ -257,14 +251,7 @@ export function BioregionDashboard() {
                     <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
                     <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
                     <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} width={40} />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--surface-elevated)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 8,
-                        fontSize: 12,
-                      }}
-                    />
+                    <Tooltip contentStyle={{ background: "var(--surface-elevated)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
                     <Line type="monotone" dataKey="value" stroke="var(--eco)" strokeWidth={2} dot={{ r: 3, fill: "var(--eco)" }} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -273,6 +260,91 @@ export function BioregionDashboard() {
           </div>
         </section>
       </div>
+
+      <SiteDetailPanel site={open} onClose={() => setOpen(null)} />
+    </div>
+  );
+}
+
+function SiteDetailPanel({ site, onClose }: { site: SiteDetail | null; onClose: () => void }) {
+  if (!site) return null;
+  return (
+    <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={`${site.name} details`}>
+      <button
+        aria-label="Close site details"
+        onClick={onClose}
+        className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
+      />
+      <aside className="absolute right-0 top-0 h-full w-full sm:w-[460px] bg-background border-l border-border shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300">
+        <div className="px-6 py-5 border-b border-border flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Pill accent={site.accent}>{site.status}</Pill>
+              <span className="font-mono text-[11px] text-muted-foreground">{site.id}</span>
+            </div>
+            <h2 className="font-display text-2xl tracking-tight">{site.name}</h2>
+            <div className="mt-1.5 text-xs text-muted-foreground inline-flex items-center gap-1.5">
+              <MapPin className="h-3 w-3" /> {site.region}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="h-8 w-8 rounded-md border border-border bg-surface flex items-center justify-center hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-6">
+          <div className="grid grid-cols-2 gap-3">
+            <DetailStat icon={<Trees className="h-3.5 w-3.5" />} label="Hectares" value={site.hectares.toLocaleString()} accent="eco" />
+            <DetailStat icon={<Wind className="h-3.5 w-3.5" />} label="Carbon (t CO₂e)" value={site.carbon.toString()} accent="val" />
+            <DetailStat icon={<Leaf className="h-3.5 w-3.5" />} label="Biodiversity" value={`${site.biodiversity}/100`} accent="eco" />
+            <DetailStat icon={<Droplets className="h-3.5 w-3.5" />} label="Water index" value={site.water.toFixed(2)} accent="gov" />
+          </div>
+
+          <div>
+            <div className="eyebrow mb-2">Field notes</div>
+            <p className="text-sm text-foreground/90 leading-relaxed">{site.notes}</p>
+          </div>
+
+          <div className="panel-flat p-4">
+            <div className="eyebrow">Steward</div>
+            <div className="mt-1.5 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-[var(--eco-soft)] text-[var(--eco)] flex items-center justify-center font-display text-sm">
+                {site.steward.charAt(0)}
+              </div>
+              <div>
+                <div className="text-sm">{site.steward}</div>
+                <div className="text-[11px] text-muted-foreground">Last survey · {site.lastSurvey}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button className="flex-1 h-9 rounded-md bg-foreground text-background text-xs hover:opacity-90 transition">
+              View full dossier
+            </button>
+            <button className="h-9 px-3 rounded-md border border-border bg-surface text-xs hover:bg-accent transition">
+              Open in map
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function DetailStat({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent: "eco" | "gov" | "val" | "fin" }) {
+  const bgMap = { eco: "bg-[var(--eco-soft)] text-[var(--eco)]", gov: "bg-[var(--gov-soft)] text-[var(--gov)]", val: "bg-[var(--val-soft)] text-[var(--val)]", fin: "bg-[var(--fin-soft)] text-[var(--fin)]" };
+  return (
+    <div className="panel-flat p-3">
+      <div className="flex items-center gap-2">
+        <span className={`h-6 w-6 rounded-md flex items-center justify-center ${bgMap[accent]}`}>{icon}</span>
+        <span className="eyebrow">{label}</span>
+      </div>
+      <div className="num text-xl mt-2">{value}</div>
     </div>
   );
 }
