@@ -71,6 +71,39 @@ const ledger = [
 ];
 
 export function GovernanceDashboard() {
+  const [votes, setVotes] = useState<Record<string, { approve: number; reject: number; abstain: number; mine: VoteChoice | null; total: number }>>(
+    () =>
+      Object.fromEntries(
+        proposals.map((p) => [p.id, { approve: p.approve, reject: p.reject, abstain: p.abstain, mine: null, total: p.approve + p.reject + p.abstain }])
+      )
+  );
+
+  function castVote(id: string, choice: VoteChoice) {
+    setVotes((prev) => {
+      const cur = prev[id];
+      if (cur.mine === choice) return prev;
+      // optimistic: add 1 to total, recompute percentages with absolute counts then re-normalise
+      const counts = {
+        approve: Math.round((cur.approve / 100) * cur.total),
+        reject: Math.round((cur.reject / 100) * cur.total),
+        abstain: Math.round((cur.abstain / 100) * cur.total),
+      };
+      if (cur.mine) counts[cur.mine] = Math.max(0, counts[cur.mine] - 1);
+      counts[choice] += 1;
+      const total = counts.approve + counts.reject + counts.abstain;
+      return {
+        ...prev,
+        [id]: {
+          mine: choice,
+          total,
+          approve: Math.round((counts.approve / total) * 100),
+          reject: Math.round((counts.reject / total) * 100),
+          abstain: 100 - Math.round((counts.approve / total) * 100) - Math.round((counts.reject / total) * 100),
+        },
+      };
+    });
+  }
+
   return (
     <div>
       <PageHeader
