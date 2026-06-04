@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { PageHeader, MetaItem, StatCard, SectionHeading, Pill } from "@/components/ui-bits";
-import { Check, X, MessageSquare, Users, Vote as VoteIcon, AlertTriangle } from "lucide-react";
+import { Check, X, MessageSquare, Users, Vote as VoteIcon, AlertTriangle, MinusCircle } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,6 +10,8 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+
+type VoteChoice = "approve" | "reject" | "abstain";
 
 const proposals = [
   {
